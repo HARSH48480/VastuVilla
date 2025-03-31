@@ -1,0 +1,166 @@
+import React, { useEffect } from 'react'
+import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import {Swiper,SwiperSlide} from 'swiper/react';
+import {Navigation} from 'swiper/modules';
+import SwiperCore from 'swiper';
+import 'swiper/css/bundle';
+import { useSelector } from 'react-redux';
+import Contact from '../components/Contact';
+import {
+    FaBath,
+    FaBed,
+    FaChair,
+    FaMapMarkedAlt,
+    FaMapMarkerAlt,
+    FaParking,
+    FaShare,
+  } from 'react-icons/fa';
+// import { current } from '@reduxjs/toolkit';
+
+
+
+export default function Listing() {
+    SwiperCore.use([Navigation]);
+    const params= useParams();
+    const [listing,setListing]=useState(null);
+    const [loading,setLoading]=useState(false);
+    const [error,setError] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const {currentUser}= useSelector((state) => state.user)
+    const [contact,setContact] =useState(false);
+    useEffect(()=>{
+     
+        const fetchListing = async()=>{
+            try {
+                setLoading(true);
+                const res = await fetch(`/api/listing/get/${params.listingId}`);
+                const data = await res.json();
+                if(data.success === false)
+                {
+                    // console.log(data.message);
+                    setError(true);
+                    setLoading(false);
+                    return;
+                    
+                }
+                setListing(data);
+                setLoading(false);
+                setError(false);
+            } catch (error) {
+                setError(true);
+                setLoading(false);
+            } 
+
+
+        }
+        fetchListing();
+
+    },[params.listingId])
+  return (
+    <main className=' w-11/12 mx-auto '> 
+
+       {
+        loading && <p className='text-center my-7 text-2xl '>Loading</p>
+       } 
+       {
+        error && <p className=' text-center my-7 text-2xl'>Some Error Occured . Sorry for the inconvenience !!</p>
+       }
+
+       {
+         listing && !loading && !error && 
+         (
+                 <div>
+                 <Swiper navigation>
+                    {listing.imageUrls.map((url)=>{
+                        return (
+                            <SwiperSlide key={url}>
+                                <div className="h-[500px] shadow-sm " style = {{background : `url(${url}) center no-repeat  `,backgroundSize:'cover' }}></div>
+                            </SwiperSlide>
+                        )
+                    })}
+                 </Swiper>
+            <div className='absolute top-[13%] right-[3%] z-10 border rounded-full w-12 h-12 flex justify-center items-center bg-slate-100 cursor-pointer'>
+            <FaShare
+              className='text-slate-500'
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                setCopied(true);
+                setTimeout(() => {
+                  setCopied(false);
+                }, 2000);
+              }}
+            />
+          </div>
+          {copied && (
+            <p className='fixed top-[20%] right-[2%] z-10 rounded-md bg-slate-100 p-2'>
+              Link copied!
+            </p>
+          )}
+           
+           <div className=" flex flex-col max-w-6xl mx-auto p-3 my-7 gap-6">
+           <p className='text-2xl font-semibold'>
+              {listing.name} - ₹{' '}
+              {listing.offer
+                ? listing.discountPrice.toLocaleString('en-US')
+                : listing.regularPrice.toLocaleString('en-US')}
+              {listing.type === 'rent' && ' / month'}
+            </p>
+            <p className='flex items-center mt-6 gap-2 text-slate-600  text-sm'>
+              <FaMapMarkerAlt className='text-green-700' />
+              {listing.address}
+            </p>
+            <div className='flex gap-4'>
+              <p className='bg-red-900 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
+                {listing.type === 'rent' ? 'For Rent' : 'For Sale'}
+              </p>
+              {listing.offer && (
+                <p className='bg-green-900 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
+                  ₹{+listing.regularPrice - +listing.discountPrice} Discounted
+                </p>
+              )}
+            </div>
+            <p className=' text-slate-800' > <span className='font-semibold text-black' > Description </span>  : {listing.description}</p>
+            <ul className='text-green-900 font-semibold text-sm flex items-center gap-4 flex-wrap'>
+                <li className='flex items-center gap-1 whitespace-nowrap '> <FaBed className='text-[28px]'/> 
+                  {
+                    listing.bedrooms > 1 ? `${listing.bedrooms} beds` : `${listing.bedrooms} bed`
+                  }
+                </li>
+                <li className='flex items-center gap-1 whitespace-nowrap '> <FaBath className='text-[28px]'/> 
+                  {
+                    listing.bedrooms > 1 ? `${listing.bathrooms} beds` : `${listing.bathrooms} bed`
+                  }
+                </li>
+                <li className='flex items-center gap-1 whitespace-nowrap '> <FaParking className='text-[28px]'/> 
+                  {
+                    listing.parking  ? `Parking Spot` : `No Parking Spot`
+                  }
+                </li>
+                <li className='flex items-center gap-1 whitespace-nowrap '> <FaChair className='text-[28px]'/> 
+                  {
+                    listing.furnished  ? `Furnished` : `Unfurnished`
+                  }
+                </li>
+            </ul>
+            {
+                currentUser && listing.userRef !== currentUser._id && !contact
+                &&(
+                   <button onClick={()=>setContact(true)} className='bg-slate-700 text-white rounded-lg uppercase hover:opacity-80 p-3' >Contact Landlord</button>
+                )
+
+            }
+            {
+                contact && <Contact listing={listing} />
+            }
+
+            
+           </div>
+           
+
+        </div>
+         )
+       }
+     </main>
+  )
+}
